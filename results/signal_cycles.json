@@ -1,0 +1,76 @@
+[
+  {
+    "timestamp": "2025-11-08T23:58:21.422170",
+    "camera_counts": {
+      "camera_1": 19,
+      "camera_2": 6,
+      "camera_3": 14,
+      "camera_4": 12
+    },
+    "sequence": [
+      {
+        "camera": "camera_1",
+        "green_time": 24,
+        "vehicle_count": 19,
+        "phase_time": 29
+      },
+      {
+        "camera": "camera_3",
+        "green_time": 18,
+        "vehicle_count": 14,
+        "phase_time": 23
+      },
+      {
+        "camera": "camera_4",
+        "green_time": 15,
+        "vehicle_count": 12,
+        "phase_time": 20
+      },
+      {
+        "camera": "camera_2",
+        "green_time": 15,
+        "vehicle_count": 6,
+        "phase_time": 20
+      }
+    ],
+    "total_cycle_time": 92,
+    "efficiency": 17.78966131907308
+  },
+  {
+    "timestamp": "2025-11-08T23:58:21.745532",
+    "camera_counts": {
+      "camera_1": 18,
+      "camera_2": 14,
+      "camera_3": 9,
+      "camera_4": 24
+    },
+    "sequence": [
+      {
+        "camera": "camera_4",
+        "green_time": 24,
+        "vehicle_count": 24,
+        "phase_time": 29
+      },
+      {
+        "camera": "camera_1",
+        "green_time": 18,
+        "vehicle_count": 18,
+        "phase_time": 23
+      },
+      {
+        "camera": "camera_2",
+        "green_time": 15,
+        "vehicle_count": 14,
+        "phase_time": 20
+      },
+      {
+        "camera": "camera_3",
+        "green_time": 15,
+        "vehicle_count": 9,
+        "phase_time": 20
+      }
+    ],
+    "total_cycle_time": 92,
+    "efficiency": 17.762237762237763
+  }
+]
