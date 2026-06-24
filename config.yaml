@@ -1,0 +1,77 @@
+# ============================================================
+# Green Traffic Analyzer — Central Configuration
+# ============================================================
+# All tunable constants live here. Edit this file to change
+# behaviour without touching source code.
+# ============================================================
+
+# ── Signal timing (seconds) ─────────────────────────────────
+signal:
+  total_cycle_time: 90      # Fixed budget for one full cycle
+  min_green_time:   15      # Hard safety floor — no direction gets less
+  max_green_time:   45      # Hard cap — one direction can't starve others
+  yellow_time:       4      # Standard yellow clearance interval
+  all_red_time:      1      # Safety buffer between phases
+
+# ── Pressure-score scheduler ────────────────────────────────
+scheduler:
+  carryover_weight: 1.5     # Leftover vehicles count this much more next cycle
+  wait_growth:      0.3     # Pressure multiplier added per missed cycle
+                            # (guarantees no starvation)
+
+# ── Vehicle type weights ─────────────────────────────────────
+# Controls how much green time each vehicle class "deserves"
+# relative to a car (weight = 1.0).
+vehicle_weights:
+  car:        1.0
+  motorcycle: 0.5
+  truck:      2.5
+  bus:        3.0
+
+# ── Emission factors (idling, g CO2 per minute) ─────────────
+# Source: EPA Mobile Source Emission Factors (approximate)
+# Used to calculate pollution reduction from reduced idle time.
+emission:
+  idle_co2_g_per_min:
+    car:        28.0
+    motorcycle: 10.0
+    truck:      75.0
+    bus:        90.0
+  # 1 g CO2 ≈ 0.43 mL petrol (proxy for fuel saved)
+  co2_to_fuel_ml: 0.43
+  # Average car emits ~120 g CO2/km — used for equivalence display
+  car_co2_per_km: 120.0
+
+# ── Saturation flow (vehicle throughput) ────────────────────
+# Vehicles cleared per second of green time (approximation).
+# A realistic urban value is 0.4–0.6 veh/s per lane.
+flow:
+  saturation_rate: 0.5      # vehicles per second
+
+# ── YOLO detection ──────────────────────────────────────────
+detection:
+  model_path:      yolov8n.pt
+  confidence:      0.40     # Minimum YOLO confidence threshold
+  save_annotated:  true     # Save bounding-box images to data/annotated/
+  annotated_dir:   data/annotated
+
+# ── Paths ────────────────────────────────────────────────────
+paths:
+  camera_images:   data/cameras     # data/cameras/<camera_id>/<image>.jpg
+  video_files:     data/videos      # data/videos/<camera_id>.mp4
+  results:         results
+  csv_output:      results/signal_cycles.csv
+  json_output:     results/signal_cycles.json
+
+# ── Dashboard ────────────────────────────────────────────────
+dashboard:
+  host:             0.0.0.0
+  port:             5000
+  push_interval_s:  1          # How often state is pushed to browsers (seconds)
+
+# ── Logging ──────────────────────────────────────────────────
+logging:
+  level:   INFO               # DEBUG / INFO / WARNING / ERROR
+  to_file: true
+  log_dir: logs
+  log_file: traffic_analyzer.log
