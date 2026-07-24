@@ -299,16 +299,46 @@ python dashboard.py
 | Metric | Fixed timing | Adaptive (this system) |
 |---|---|---|
 | Green time per direction | 22.5s (equal) | 15–45s (pressure-based) |
-| Starvation risk | None guaranteed | None (wait multiplier) |
+| Starvation risk | Not guaranteed | None (wait multiplier) |
 | Vehicle type awareness | ❌ | ✅ Bus = 3× car |
 | Queue carryover | ❌ | ✅ Persists across cycles |
 | Emission tracking | ❌ | ✅ Per phase, cumulative |
 
+### Efficiency — Queue Reduction (Primary Metric)
+
+The primary efficiency metric is **queue reduction** — how much less carryover (leftover vehicles) our adaptive system leaves compared to fixed timing:
+
+```
+fixed_carryover    = Σ max(0, vehicles[d] - 22.5s × 0.5 veh/s)
+adaptive_carryover = Σ carryover_out per phase
+
+queue_reduction = (1 - adaptive_carryover / fixed_carryover) × 100
+```
+
+**Example cycle (uneven traffic):**
+
+| Direction | Vehicles | Fixed clears | Fixed carryover | Adaptive green | Adaptive clears | Adaptive carryover |
+|---|---|---|---|---|---|---|
+| North | 30 | 11 | **19** | 40s | 20 | **10** |
+| South | 5 | 5 | 0 | 15s | 5 | 0 |
+| East | 8 | 8 | 0 | 20s | 8 | 0 |
+| West | 2 | 2 | 0 | 15s | 2 | 0 |
+| **Total** | | | **19** | | | **10** |
+
+```
+queue_reduction = (1 - 10/19) × 100 = 47.4%
+```
+
+Nearly half the queue that fixed timing would leave behind is cleared by our system. Those 9 extra vehicles don't idle through the next cycle — that is directly where the emission savings come from.
+
+> **Why not report a single fixed percentage like "17.8% efficiency"?**
+> Because efficiency varies with traffic mix. With uniform traffic, both systems perform equally. With uneven traffic (one busy direction), queue reduction can reach 40–60%. Reporting a live per-cycle number is more honest and more useful than a hardcoded claim.
+
 ### Emission model (per busy intersection, estimated)
 
-| Scenario | Idle time saved | CO₂ saved | Fuel saved |
+| Scenario | Queue reduction | CO₂ saved | Fuel saved |
 |---|---|---|---|
-| 1 cycle (90s) | ~8s avg per direction | ~15–40 g | ~6–17 mL |
+| 1 cycle (90s), uneven traffic | 30–50% less carryover | ~15–40 g | ~6–17 mL |
 | 1 hour (~40 cycles) | — | ~600g–1.6 kg | ~240–690 mL |
 | 1 day (12 active hours) | — | ~7–19 kg CO₂ | ~3–8 L fuel |
 

@@ -5,7 +5,7 @@ Pressure-score based adaptive traffic signal controller.
 
 Scheduling model
 ----------------
-Each direction (camera) carries a pressure score that grows every cycle it
+Each direction (camera) carries a *pressure score* that grows every cycle it
 waits and shrinks when it receives green.  The score combines:
 
     pressure = (weighted_count + carryover_penalty) × wait_multiplier
@@ -89,7 +89,8 @@ class CycleResult:
     timestamp:        str
     phases:           list[PhaseResult]
     total_cycle_time: float
-    efficiency_pct:   float        # vs fixed baseline
+    efficiency_pct:   float   # throughput vs fixed baseline (capped 100%)
+    queue_reduction_pct: float  # % less carryover vs fixed — PRIMARY metric
     co2_saved_g:      float        # this cycle
     fuel_saved_ml:    float
     cumulative_co2_saved_g:   float
@@ -180,7 +181,8 @@ class TrafficSignalController:
         self.emission_totals["co2_g"]   += cycle_co2
         self.emission_totals["fuel_ml"] += cycle_fuel
 
-        efficiency = self._compute_efficiency(detections, phases)
+        efficiency        = self._compute_efficiency(detections, phases)
+        queue_reduction   = self._compute_queue_reduction(detections, phases)
 
         result = CycleResult(
             cycle_number=self.cycle_number,
@@ -188,6 +190,7 @@ class TrafficSignalController:
             phases=phases,
             total_cycle_time=round(total_time, 1),
             efficiency_pct=round(efficiency, 1),
+            queue_reduction_pct=round(queue_reduction, 1),
             co2_saved_g=round(cycle_co2, 1),
             fuel_saved_ml=round(cycle_fuel, 1),
             cumulative_co2_saved_g=round(self.emission_totals["co2_g"], 1),
@@ -316,7 +319,7 @@ class TrafficSignalController:
         )
 
     # ------------------------------------------------------------------
-    # Internal — efficiency vs fixed baseline
+    # Internal — efficiency metrics
     # ------------------------------------------------------------------
     def _compute_efficiency(
         self,
@@ -325,8 +328,8 @@ class TrafficSignalController:
     ) -> float:
         """
         Throughput-based efficiency:
-            efficiency = vehicles_cleared_adaptive / vehicles_cleared_fixed
-        where fixed assumes every camera gets FIXED_GREEN_TIME seconds.
+            efficiency = vehicles_cleared_adaptive / vehicles_cleared_fixed × 100
+        Capped at 100% — use queue_reduction_pct as the primary insight metric.
         """
         fixed_cleared    = sum(
             min((det.total_vehicles if det else 0),
@@ -340,16 +343,50 @@ class TrafficSignalController:
 
         return min(100.0, (adaptive_cleared / fixed_cleared) * 100.0)
 
+    def _compute_queue_reduction(
+        self,
+        detections: dict[str, DetectionResult],
+        phases: list[PhaseResult],
+    ) -> float:
+        """
+        Queue reduction percentage — PRIMARY efficiency metric.
+
+        Compares carryover (leftover queue) under adaptive vs fixed timing:
+
+            fixed_carryover    = Σ max(0, vehicles[d] - FIXED_GREEN × 0.5)
+            adaptive_carryover = Σ phase.carryover_out
+
+            queue_reduction = (1 - adaptive_carryover / fixed_carryover) × 100
+
+        A positive value means our system leaves fewer vehicles waiting
+        at the end of the cycle than fixed timing would.
+        Higher = better. 0% = same as fixed. Negative = worse than fixed.
+        """
+        fixed_carryover = sum(
+            max(0.0, (det.total_vehicles if det else 0)
+                - FIXED_GREEN_TIME * SATURATION_FLOW)
+            for det in detections.values()
+        )
+        adaptive_carryover = sum(p.carryover_out for p in phases)
+
+        if fixed_carryover == 0:
+            # No queue under fixed timing either — both systems equal
+            return 0.0
+
+        reduction = (1.0 - adaptive_carryover / fixed_carryover) * 100.0
+        return max(-100.0, min(100.0, reduction))
+
     # ------------------------------------------------------------------
     # Internal — logging
     # ------------------------------------------------------------------
     def _log_cycle(self, result: CycleResult) -> None:
         logger.info(
-            "Cycle %d complete | time=%.1fs | efficiency=%.1f%% | "
-            "CO2 saved=%.1fg (total=%.1fg)",
+            "Cycle %d complete | time=%.1fs | throughput=%.1f%% | "
+            "queue_reduction=%.1f%% | CO2 saved=%.1fg (total=%.1fg)",
             result.cycle_number,
             result.total_cycle_time,
             result.efficiency_pct,
+            result.queue_reduction_pct,
             result.co2_saved_g,
             result.cumulative_co2_saved_g,
         )
@@ -376,5 +413,7 @@ if __name__ == "__main__":
 
     for cycle in range(3):
         result = controller.run_cycle(mock)
-        print(f"\nCycle {result.cycle_number} | Efficiency {result.efficiency_pct}% | "
+        print(f"\nCycle {result.cycle_number} | "
+              f"Throughput {result.efficiency_pct}% | "
+              f"Queue reduction {result.queue_reduction_pct}% | "
               f"CO2 saved {result.co2_saved_g}g")

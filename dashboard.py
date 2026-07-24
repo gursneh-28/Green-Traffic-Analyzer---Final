@@ -448,9 +448,9 @@ DASHBOARD_HTML = r"""
 <!-- ── Top KPI row ── -->
 <div class="grid grid-top">
   <div class="card">
-    <div class="card-label">Efficiency vs Fixed</div>
+    <div class="card-label">Queue Reduction vs Fixed</div>
     <div class="card-value green" id="kpi-efficiency">—</div>
-    <div class="card-sub">throughput improvement</div>
+    <div class="card-sub">less vehicles waiting next cycle</div>
   </div>
   <div class="card">
     <div class="card-label">CO₂ Saved · This Cycle</div>
@@ -563,7 +563,7 @@ DASHBOARD_HTML = r"""
         <span id="em-cycles">0</span>
       </div>
       <div class="emission-row">
-        <span>Avg efficiency</span>
+        <span>Avg queue reduction</span>
         <span id="em-avg-eff">—</span>
       </div>
     </div>
@@ -589,7 +589,7 @@ DASHBOARD_HTML = r"""
 
   <!-- Efficiency history chart -->
   <div class="card">
-    <div class="section-title">Efficiency History</div>
+    <div class="section-title">Queue Reduction History</div>
     <div class="chart-wrap">
       <canvas id="eff-chart"></canvas>
     </div>
@@ -608,7 +608,7 @@ const effChart = new Chart(ctx, {
   data: {
     labels: [],
     datasets: [{
-      label: 'Efficiency %',
+      label: 'Queue Reduction %',
       data: [],
       borderColor: '#00e57a',
       backgroundColor: 'rgba(0,229,122,0.08)',
@@ -748,9 +748,9 @@ socket.on('state_update', function(data) {
     new Date(data.timestamp).toLocaleTimeString();
   document.getElementById('hdr-cycle').textContent = 'Cycle ' + data.cycle_number;
 
-  // KPIs
+  // KPIs — queue_reduction_pct is the primary metric
   document.getElementById('kpi-efficiency').textContent =
-    (data.efficiency_pct ?? 0).toFixed(1) + '%';
+    (data.queue_reduction_pct ?? data.efficiency_pct ?? 0).toFixed(1) + '%';
   document.getElementById('kpi-co2').textContent =
     (data.co2_saved_g ?? 0).toFixed(1);
   document.getElementById('kpi-fuel').textContent =
@@ -800,10 +800,12 @@ socket.on('state_update', function(data) {
   // Vehicle breakdown
   renderBreakdown(data.vehicle_counts);
 
-  // Efficiency chart — one point per cycle
+  // Queue reduction chart — one point per cycle
   if (data.cycle_number && effChart.data.labels.indexOf('C' + data.cycle_number) === -1) {
     effChart.data.labels.push('C' + data.cycle_number);
-    effChart.data.datasets[0].data.push((data.efficiency_pct ?? 0).toFixed(1));
+    effChart.data.datasets[0].data.push(
+      (data.queue_reduction_pct ?? data.efficiency_pct ?? 0).toFixed(1)
+    );
     if (effChart.data.labels.length > 30) {
       effChart.data.labels.shift();
       effChart.data.datasets[0].data.shift();
